@@ -1,4 +1,4 @@
-# Normflow Library
+# Stable ResNet Library
 
 ## Setup library
 
