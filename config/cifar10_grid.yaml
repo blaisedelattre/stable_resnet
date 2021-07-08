@@ -1,0 +1,216 @@
+
+#########################
+### Models Parameters ###
+#########################
+
+resnet: &resnet
+  depth: 101
+  leaky_slope: 0.1
+
+resnet_stable: &resnet_stable
+  depth: 20
+  leaky_slope: 0.1
+  discretization_step: 0.001
+
+
+################################
+### Learning Rate Parameters ###
+################################
+
+piecewise_constant: &piecewise_constant
+  milestones: [7500, 15000, 20000]
+  values: [0.1, 0.02, 0.0004, 0.00008]
+
+step_lr: &step_lr
+  step_size: 50
+  gamma: 0.2
+
+multi_step_lr: &multi_step_lr
+  milestones: [60, 120, 160]
+  gamma: 0.1
+
+exponential_lr: &exponential_lr
+  gamma: 0.97 
+
+lambda_lr: &lambda_lr
+  gamma: 0.97
+  decay_every_epoch: 2
+  warmup: 0
+
+############################
+### Optimizer Parameters ###
+############################
+
+sgd: &sgd
+  momentum: 0.9
+  dampening: 0
+  nesterov: True
+
+rmsprop: &rmsprop
+  alpha: 0.99
+  momentum: 0.0
+  eps: 1.e-08
+
+adam: &adam 
+  betas: [0.9, 0.999]
+  eps: 1.e-08
+  amsgrad: True
+
+#######################################
+### Adversarial Training Parameters ###
+#######################################
+
+carlini: &adv_params_carlini
+  l2_bound: 0.83
+  learning_rate: 0.01
+  binary_search_steps: 9
+  max_iterations: 100
+  confidence: 0.
+  abort_early: True
+  initial_const: 0.001
+  clip_min: 0.0
+  clip_max: 1.0
+
+elasticnet: &adv_params_elasticnet
+  learning_rate: 0.01
+  binary_search_steps: 9
+  max_iterations: 100
+  confidence: 0.
+  targeted: False
+  abort_early: True
+  initial_const: 0.001
+  clip_min: 0.0
+  clip_max: 1.0
+  beta: 0.001
+  decision_rule: 'EN'
+
+pgd_linf: &adv_params_pgd_linf
+  norm: 'inf'
+  eps: 0.031
+  eps_iter: 0.0062
+  nb_iter: 10
+  rand_init: True
+  clip_min: 0.0
+  clip_max: 1.0
+
+pgd_l2: &adv_params_pgd_l2
+  norm: l2
+  eps: 0.5
+  eps_iter: -1 # if -1 eps/steps*2
+  nb_iter: 20
+  rand_init: True
+  clip_min: 0.0
+  clip_max: 1.0
+
+
+###########################
+### Training Parameters ###
+###########################
+
+train: &TRAIN
+
+  dataset: cifar10
+  model: resnet_stable
+  model_params: 
+    <<: *resnet_stable
+
+  adversarial_training: False
+  adversarial_training_name: pgd
+  adversarial_training_params:
+    <<: *adv_params_pgd_l2
+
+  init_learning_rate: 0.01
+  lr_scheduler: lambda_lr
+  lr_scheduler_params: 
+    <<: *lambda_lr
+  optimizer: sgd
+  optimizer_params:
+    <<: *sgd
+
+  ema: 0.0
+  weight_decay: 0.0003
+
+  lipschitz_regularization: False
+  lipschitz_decay: 0.001
+  lipschitz_bound_sample: 10
+  lipschitz_start_epoch: 0
+
+  add_normalization: True
+  data_augmentation: True
+  imagenet_image_size: 224
+
+  # random seed 
+  torch_random_seed: null
+  # Batch size per compute device (i.e. GPU)
+  batch_size: 25
+  # Number of epochs to run 
+  num_epochs: 5
+  # This flag allows you to enable the inbuilt cudnn auto-tuner to find the 
+  # best algorithm to use for your hardware.
+  cudnn_benchmark: True
+
+  gradient_clip_by_norm: 1
+  gradient_clip_by_value: null
+
+  # Sets the threshold for what messages will be logged. 
+  logging_verbosity: INFO
+  # frequency of logs during training 
+  frequency_log_steps: 100
+  # How often to save trained models.
+  save_checkpoint_epochs: 1
+ 
+
+
+eval: &EVAL
+  <<: *TRAIN
+  data_pattern: test*
+  batch_size: 100
+  eval_under_attack: False
+  dump_files: False
+
+
+attack: &ATTACK
+  eval_under_attack: True
+  dump_files: False
+  eot: False
+  eot_samples: 80
+
+attack_pgd_linf:
+  <<: *TRAIN
+  <<: *EVAL
+  <<: *ATTACK
+  attack_method: pgd
+  attack_params:
+    <<: *adv_params_pgd_linf
+    norm: 'inf'
+    eps: 0.031
+    eps_iter: 0.0062
+    nb_iter: 100
+
+attack_pgd_l2:
+  <<: *TRAIN
+  <<: *EVAL
+  <<: *ATTACK
+  attack_method: pgd
+  attack_params:
+    <<: *adv_params_pgd_l2
+    norm: l2
+    eps: 0.832
+    eps_iter: 0.1664
+    nb_iter: 100
+
+attack_carlini:
+  <<: *TRAIN
+  <<: *EVAL
+  <<: *ATTACK
+  attack_method: carlini
+  attack_params:
+    <<: *adv_params_carlini
+
+attack_elasticnet:
+  <<: *TRAIN
+  <<: *EVAL
+  <<: *ATTACK
+  attack_method: elasticnet
+  attack_params:
+    <<: *adv_params_elasticnet
