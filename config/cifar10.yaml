@@ -8,7 +8,7 @@ resnet: &resnet
   leaky_slope: 0.1
 
 resnet_stable: &resnet_stable
-  depth: 50
+  depth: 20
   leaky_slope: 0.1
   discretization_step: 0.001
 
@@ -32,17 +32,6 @@ multi_step_lr: &multi_step_lr
 exponential_lr: &exponential_lr
   gamma: 0.97 
 
-reduce_lr_on_plateau: &reduce_lr_on_plateau
-  mode: 'min'
-  factor: 0.1
-  patience: 10
-  verbose: False
-  threshold: 0.0001
-  threshold_mode: 'rel'
-  cooldown: 0
-  min_lr: 0
-  eps: 1.e-08
-
 lambda_lr: &lambda_lr
   gamma: 0.97
   decay_every_epoch: 2
@@ -61,11 +50,6 @@ rmsprop: &rmsprop
   alpha: 0.99
   momentum: 0.0
   eps: 1.e-08
-
-rmsproptf: &rmsproptf
-  alpha: 0.9
-  momentum: 0.9
-  eps: 0.001
 
 adam: &adam 
   betas: [0.9, 0.999]
@@ -131,29 +115,11 @@ train: &TRAIN
     <<: *resnet_stable
 
   adversarial_training: False
-  adv_strategy: null
   adversarial_training_name: pgd
   adversarial_training_params:
     <<: *adv_params_pgd_l2
 
-  additive_noise: False
-  adaptive_noise: True
-  noise_distribution: uniform
-  # the maximum standard deviation to use for the injected noise 
-  # for l2 uniform distribution, we convert the std with the radius of the l2 ball
-  noise_scale: 0.25
-  # number of samples to use for approximating the gradient
-  n_sample: 30
-  # number of different scale to try for approximating the gradient
-  n_scales: 5
-  # the step between the different scales
-  noise_step: 0.05
-
-  stability_training: False
-  # we use the parameter "6" from the RS of all shape and size
-  stability_training_lambda: 6
-
-  init_learning_rate: 0.1
+  init_learning_rate: 0.01
   lr_scheduler: lambda_lr
   lr_scheduler_params: 
     <<: *lambda_lr
@@ -161,9 +127,7 @@ train: &TRAIN
   optimizer_params:
     <<: *sgd
 
-  lb_smooth: 0.0
   ema: 0.0
-
   weight_decay: 0.0003
 
   lipschitz_regularization: False
@@ -180,27 +144,12 @@ train: &TRAIN
   # Batch size per compute device (i.e. GPU)
   batch_size: 25
   # Number of epochs to run 
-  num_epochs: 200
+  num_epochs: 5
   # This flag allows you to enable the inbuilt cudnn auto-tuner to find the 
   # best algorithm to use for your hardware.
   cudnn_benchmark: True
-  # Methods to assign GPU host work to threads. global: all GPUs and CPUs 
-  # share the same global threads; gpu_private: a private threadpool for each 
-  # GPU; gpu_shared: all GPUs share the same threadpool.
-  gpu_thread_mode: gpu_private
-  # The number of threads to use for GPU. Only valid when gpu_thread_mode is not global.
-  per_gpu_thread_count: 0
-  # Number of threads to use for intra-op parallelism. 0=auto, None=disable.
-  num_intra_threads: 0 
-  # Number of threads to use for intra-op parallelism. 0=auto.
-  num_inter_threads: 0 
-  # Number of threads for a private threadpool created for all datasets 
-  # computation. By default, we pick an appropriate number. If set to 0, we 
-  # use the default tf-Compute threads for dataset operations, if False, we
-  # don't use a private threadpool.
-  datasets_num_private_threads: 0
 
-  gradient_clip_by_norm: null
+  gradient_clip_by_norm: 1
   gradient_clip_by_value: null
 
   # Sets the threshold for what messages will be logged. 
