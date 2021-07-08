@@ -21,10 +21,6 @@ def main(args):
   params.num_gpus = args.n_gpus
   params.start_new_model = False
 
-  # Set up environment variables before doing any other global initialization to
-  # make sure it uses the appropriate environment variables.
-  utils.set_default_param_values_and_env_vars(params)
-
   # Setup logging & log the version.
   utils.setup_logging(params.logging_verbosity)
 

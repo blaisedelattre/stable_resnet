@@ -13,7 +13,6 @@ from os.path import exists
 
 import utils
 from .models import model_config
-# from .lipschitz import LipschitzRegularization
 from .dataset.readers import readers_config
 
 import numpy as np
@@ -33,7 +32,7 @@ class Trainer:
   def __init__(self, params):
     """Creates a Trainer.
     """
-    utils.set_default_param_values_and_env_vars(params)
+    # utils.set_default_param_values_and_env_vars(params)
     self.params = params
 
     # Setup logging & log the version.
@@ -115,6 +114,9 @@ class Trainer:
                        self.params.init_learning_rate,
                        self.params.weight_decay,
                        self.model.parameters())
+
+    # define the loss
+    self.criterion = torch.nn.CrossEntropyLoss().cuda()
 
     # define learning rate scheduler
     self.scheduler = utils.get_scheduler(
@@ -225,15 +227,6 @@ class Trainer:
 
   def _run_training(self):
 
-    if self.params.lb_smooth == 0:
-      self.criterion = torch.nn.CrossEntropyLoss().cuda()
-    else:
-      if self.local_rank == 0:
-        logging.info("Using CrossEntropyLoss with label smooth {}.".format(
-          self.params.lb_smooth))
-      self.criterion = utils.CrossEntropyLabelSmooth(
-        self.reader.n_classes, self.params.lb_smooth)
-
     # if start_new_model is True, global_step = 0
     # else we get global step from checkpoint
     if self.start_new_model:
@@ -268,8 +261,6 @@ class Trainer:
           self._training(data, epoch, global_step)
         if profile_enabled:
           logging.info(prof.key_averages().table(sort_by="self_cpu_time_total"))
-          # prof.export_chrome_trace(join(
-          #   self.train_dir+'_logs', 'trace_{}.json'.format(global_step)))
         self._save_ckpt(global_step, epoch_id)
         global_step += 1
 
@@ -307,14 +298,11 @@ class Trainer:
         raise ValueError('Input values should be in the [0, 1] range.')
       inputs = self.attack.perturb(inputs)
 
-
-    total_loss = 0.
     outputs = self.model(inputs)
-    loss_ce = self.criterion(outputs, labels)
-    total_loss += loss_ce
+    loss = self.criterion(outputs, labels)
 
     self.optimizer.zero_grad()
-    total_loss.backward()
+    loss.backward()
     self._process_gradient(step)
     self.optimizer.step()
 
@@ -342,7 +330,7 @@ class Trainer:
       self.message.add("epoch", epoch, format="4.2f")
       self.message.add("step", step, width=5, format=".0f")
       self.message.add("lr", lr, format=".6f")
-      self.message.add("loss", loss_ce, format=".4f")
+      self.message.add("loss", loss, format=".4f")
       self.message.add("imgs/sec", examples_per_second, width=5, format=".0f")
       logging.info(self.message.get_message())
 

@@ -30,7 +30,6 @@ class BaseReader:
     self.normalization_mean = None
     self.normalization_std = None
     self.path = join(self.get_data_dir(), self.params.dataset)
-    self.num_threads = self.params.datasets_num_private_threads
 
   def get_data_dir(self):
     paths = self.params.data_dir.split(':')
@@ -56,7 +55,7 @@ class BaseReader:
       sampler = None
     loader = DataLoader(self.dataset,
                         batch_size=self.batch_size,
-                        num_workers=self.num_threads,
+                        num_workers=2*self.num_gpus,
                         shuffle=self.is_training and not sampler,
                         pin_memory=bool(self.num_gpus),
                         sampler=sampler)
