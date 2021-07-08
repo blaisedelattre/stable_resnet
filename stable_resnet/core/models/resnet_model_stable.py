@@ -1,7 +1,7 @@
 
 import logging
-import math
 import torch
+import numpy as np
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Variable
@@ -24,19 +24,18 @@ class StableBlock(nn.Module):
     self.lip = LipschitzBound(self.kernel.shape, padding=1)
 
     # initialize weights and biases
-    nn.init.kaiming_uniform_(self.kernel, a=math.sqrt(5)) # weight init
+    nn.init.kaiming_uniform_(self.kernel, a=np.sqrt(5)) # weight init
     fan_in, _ = nn.init._calculate_fan_in_and_fan_out(self.kernel)
-    bound = 1 / math.sqrt(fan_in)
+    bound = 1 / np.sqrt(fan_in)
     nn.init.uniform_(self.bias, -bound, bound)  # bias init
 
   def forward(self, x):
     res = F.conv2d(x, self.kernel, bias=self.bias, stride=1, padding=1)
     res = self.leaky_relu(res)
     res = F.conv_transpose2d(res, self.kernel, stride=1, padding=1)
-    sv_max = self.lip.compute(self.kernel)
-    h = 2 / sv_max**2
-    logging.info('h = {}'.format(h))
-    out = x + h * res
+    # sv_max = self.lip.compute(self.kernel).detach().cpu().item()
+    # h = np.max([2 / sv_max**2, 1e-5])
+    out = x + self.h * res
     return out
 
 
