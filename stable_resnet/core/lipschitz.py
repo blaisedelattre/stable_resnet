@@ -40,9 +40,9 @@ class LipschitzBound:
     if self.backend == 'torch':
       self.w0 = torch.FloatTensor(np.float32(self.w0))
       self.w1 = torch.FloatTensor(np.float32(self.w1))
-      if self.cuda:
-        self.w0 = self.w0.cuda()
-        self.w1 = self.w1.cuda()
+      # if self.cuda:
+      #   self.w0 = self.w0.cuda()
+      #   self.w1 = self.w1.cuda()
 
    # create samples
     if self.backend == 'numpy':
@@ -55,9 +55,9 @@ class LipschitzBound:
       p_index = torch.arange(-ksize + 1.0, 1.0) + padding
       H0 = p_index.repeat(ksize).reshape(ksize, ksize).T.reshape(-1)
       H1 = p_index.repeat(ksize)
-      if self.cuda:
-        H0 = H0.cuda()
-        H1 = H1.cuda()
+      # if self.cuda:
+      #   H0 = H0.cuda()
+      #   H1 = H1.cuda()
       real = torch.cos(self.w0 * H0 + self.w1 * H1).T
       imag = torch.sin(self.w0 * H0 + self.w1 * H1).T
       self.samples = (real, imag)
@@ -103,7 +103,7 @@ class LipschitzBound:
   def _compute_from_torch(self, kernel):
     """Compute the LipGrid Algo with Torch"""
 
-    logging.info('kernel device {}'.format(kernel.device))
+    device = kernel.device
 
     pad = self.padding
     cout, cin, ksize, _ = kernel.shape
@@ -117,6 +117,8 @@ class LipschitzBound:
       cout, cin = cin, cout
 
     real, imag = self.samples
+    real = real.to(device)
+    imag = imag.to(device)
     ker = kernel.reshape(cout*cin, -1)
     poly_real = torch.matmul(ker, real).view(cout, cin, -1)
     poly_imag = torch.matmul(ker, imag).view(cout, cin, -1)
